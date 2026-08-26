@@ -20,3 +20,16 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::health_check;
+    use axum::http::StatusCode;
+
+    #[tokio::test]
+    async fn health_check_succeeds() {
+        let response = health_check().await;
+
+        assert_eq!(response, StatusCode::OK);
+    }
+}
