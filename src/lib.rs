@@ -2,7 +2,7 @@ use axum::{Router, extract::Path, http::StatusCode, routing::get};
 use tokio::net::TcpListener;
 
 async fn greet(Path(name): Path<String>) -> String {
-    format!("Hello, {name}!\n").to_string()
+    format!("Hello, {name}!\n")
 }
 
 async fn health_check() -> StatusCode {
@@ -17,7 +17,6 @@ pub fn run()
         .route("/{name}", get(greet))
         .route("/health_check", get(health_check));
 
-    // run app with hyper, listening globally on port 3000
     let listener = std::net::TcpListener::bind("127.0.0.1:8000")?;
     listener.set_nonblocking(true)?;
     let listener = TcpListener::from_std(listener)?;
