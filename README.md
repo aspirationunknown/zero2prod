@@ -2,6 +2,7 @@
 
 ## Differences
 - The axum framework is used instead of actix-web
+- Configuration is usint JSON instead of YAML
 - Newer versions of some dependencies are used
 
 ## Current Position in Book
