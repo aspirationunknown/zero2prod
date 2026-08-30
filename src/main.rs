@@ -1,4 +1,6 @@
-use zero2prod::run;
+//! src/main.rs
+
+use zero2prod::startup::run;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

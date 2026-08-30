@@ -1,4 +1,6 @@
-use zero2prod::run;
+//! tests/health_check.rs
+
+use zero2prod::startup::run;
 
 fn spawn_app() -> String {
     let listener =
