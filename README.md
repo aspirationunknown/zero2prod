@@ -3,3 +3,6 @@
 ## Differences
 - The axum framework is used instead of actix-web
 - Newer versions of some dependencies are used
+
+## Current Position in Book
+I am currently at section 3.8.5.2.1
