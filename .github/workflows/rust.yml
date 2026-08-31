@@ -8,17 +8,62 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SQLX_VERSION: 0.9.0
+  SQLX_FEATURES: "rustls,postgres"
+  APP_USER: app
+  APP_USER_PWD: secret
+  APP_DB_NAME: newsletter
 
 jobs:
   build:
 
+    name: Build
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres18.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: zero2prod
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install the Rust Toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install sqlx-cli
+      run: cargo install sqlx-cli
+        --version=${{ env.SQLX_VERSION }}
+        --features ${{ env.SQLX_FEATURES }}
+        --no-default-features
+        --locked
+
+    - name: Create app user in Postgres
+      run: |
+        sudo apt-get install postgresql-client
+
+        # Create application user
+        CREATE_QUERY="CREATE USER ${APP_USER} WITH PASSWORD '${APP_PWD}';"
+        PGPASSWORD="zero2prod" psql -U "postgres" -h "localhost" -c "${CREATE_QUERY}"
+
+        # Grant create db priviledges to the app user
+        GRANT_QUERY="ALTER USER ${APP_USER} CREATEDB;"
+        PGPASSWORD="zero2prod" psql -U "postgres" -h "localhost" -c "${GRANT_QUERY}"
+
+    - name: Migrate DB
+      run: SKIP_DOCKER=true ./scripts/init_db.sh
+
     - name: Run clippy
       run: cargo clippy --verbose
+
     - name: Build
       run: cargo build --verbose
+
     - name: Run tests
       run: cargo test --verbose
