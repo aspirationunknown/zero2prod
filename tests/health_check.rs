@@ -1,20 +1,30 @@
 //! tests/health_check.rs
 
-use sqlx::{Connection, PgConnection};
+use std::time::Duration;
+
+use sqlx::{Connection, PgConnection, postgres::PgPoolOptions};
 use zero2prod::{configuration::get_configuration, startup::run};
 
-fn spawn_app() -> String {
+async fn spawn_app() -> String {
+    let configuration = get_configuration().expect("Failed to read configuration file");
+    let connection_string = configuration.database.connection_string();
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(3))
+        .connect(&connection_string)
+        .await
+        .expect("Failed to connect to database");
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
     let port = listener.local_addr().unwrap().port();
-    let server = run(listener).expect("Failed to bind address");
+    let server = run(listener, pool).expect("Failed to bind address");
     tokio::spawn(server);
     format!("http://127.0.0.1:{}", port)
 }
 
 #[tokio::test]
 async fn health_check_works() {
-    let address = spawn_app();
+    let address = spawn_app().await;
     let client = reqwest::Client::new();
 
     let response = client
@@ -29,7 +39,7 @@ async fn health_check_works() {
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
     let configuration = get_configuration().expect("Failed to read configuration");
     let connection_string = configuration.database.connection_string();
     let mut connection = PgConnection::connect(&connection_string)
@@ -56,7 +66,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 
 #[tokio::test]
 async fn subscribe_returns_a_422_when_data_is_missing() {
-    let app_address = spawn_app();
+    let app_address = spawn_app().await;
     let client = reqwest::Client::new();
     let test_cases = vec![
         ("name=le%20guin", "missing the email"),
