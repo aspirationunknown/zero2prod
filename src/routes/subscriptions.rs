@@ -1,7 +1,10 @@
 //! src/routes/subscriptions.rs
 
-use axum::{Form, http::StatusCode};
+use axum::{Form, extract::State, http::StatusCode};
+use chrono::Utc;
 use serde::Deserialize;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct FormData {
@@ -9,9 +12,22 @@ pub struct FormData {
     email: String,
 }
 
-pub async fn subscribe(subscription_form: Form<FormData>) -> StatusCode {
-    let name = subscription_form.0.name;
-    let email = subscription_form.0.email;
-    println!("Subscriber info: name = {name}, email = {email}");
+pub async fn subscribe(
+    State(pool): State<PgPool>,
+    Form(subscription_form): Form<FormData>,
+) -> StatusCode {
+    let _result = sqlx::query!(
+        r#"
+        INSERT INTO subscriptions (id, email, name, subscribed_at)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        Uuid::new_v4(),
+        subscription_form.email,
+        subscription_form.name,
+        Utc::now()
+    )
+    .execute(&pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
     StatusCode::OK
 }
