@@ -16,7 +16,7 @@ pub async fn subscribe(
     State(pool): State<PgPool>,
     Form(subscription_form): Form<FormData>,
 ) -> StatusCode {
-    let _result = sqlx::query!(
+    match sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
@@ -28,6 +28,11 @@ pub async fn subscribe(
     )
     .execute(&pool)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-    StatusCode::OK
+    {
+        Ok(_) => StatusCode::OK,
+        Err(err) => {
+            println!("Failed to execute query: {}", err);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
 }
