@@ -1,8 +1,15 @@
 //! tests/health_check.rs
 
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::{
+    Postgres, QueryBuilder,
+    postgres::{PgPool, PgPoolOptions},
+};
 use std::time::Duration;
-use zero2prod::{configuration::get_configuration, startup::run};
+use uuid::Uuid;
+use zero2prod::{
+    configuration::{DatabaseSettings, get_configuration},
+    startup::run,
+};
 
 #[derive(Debug)]
 pub struct TestApp {
@@ -11,14 +18,9 @@ pub struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
-    let configuration = get_configuration().expect("Failed to read configuration file");
-    let connection_string = configuration.database.connection_string();
-    let connection_pool = PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(3))
-        .connect(&connection_string)
-        .await
-        .expect("Failed to connect to database");
+    let mut configuration = get_configuration().expect("Failed to read configuration file");
+    configuration.database.database_name = Uuid::new_v4().to_string();
+    let connection_pool = configure_database(&configuration.database).await;
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
     let port = listener.local_addr().unwrap().port();
@@ -29,6 +31,34 @@ async fn spawn_app() -> TestApp {
         address,
         db_pool: connection_pool,
     }
+}
+
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    let connection = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(3))
+        .connect(&config.connection_string_without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+    let mut command: QueryBuilder<Postgres> = QueryBuilder::new(r#"CREATE DATABASE ""#);
+    command.push(&config.database_name);
+    command.push(r#"";"#);
+    command
+        .build()
+        .execute(&connection)
+        .await
+        .expect("Failed to create database");
+    let connection_pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(3))
+        .connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to Postgres");
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate database");
+    connection_pool
 }
 
 #[tokio::test]
