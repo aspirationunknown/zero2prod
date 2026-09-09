@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use std::future::Future;
 use std::io::Result;
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
 
 pub fn run(
     listener: std::net::TcpListener,
@@ -18,6 +19,7 @@ pub fn run(
     let app = Router::new()
         .route("/health_check", get(health_check))
         .route("/subscriptions", post(subscribe))
+        .layer(TraceLayer::new_for_http())
         .with_state(pool);
 
     listener.set_nonblocking(true)?;

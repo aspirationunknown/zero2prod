@@ -16,6 +16,13 @@ pub async fn subscribe(
     State(pool): State<PgPool>,
     Form(subscription_form): Form<FormData>,
 ) -> StatusCode {
+    let request_id = Uuid::new_v4();
+    log::info!(
+        "Request_ID: {}; Adding Name: '{}'; Email: '{}' as a new subscriber.",
+        request_id,
+        subscription_form.name,
+        subscription_form.email
+    );
     match sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -29,9 +36,23 @@ pub async fn subscribe(
     .execute(&pool)
     .await
     {
-        Ok(_) => StatusCode::OK,
+        Ok(_) => {
+            log::info!(
+                "Successfully added Request_ID: {}; Name: '{}'; Email: '{}' as a subscriber.",
+                request_id,
+                subscription_form.name,
+                subscription_form.email
+            );
+            StatusCode::OK
+        }
         Err(err) => {
-            println!("Failed to execute query: {}", err);
+            log::error!(
+                "Failed to execute query: Request_ID: {}; Name: '{}'; Email: '{}'; Error: {:?}",
+                request_id,
+                subscription_form.name,
+                subscription_form.email,
+                err
+            );
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
