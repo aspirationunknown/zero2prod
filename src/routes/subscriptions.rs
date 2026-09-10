@@ -17,12 +17,14 @@ pub async fn subscribe(
     Form(subscription_form): Form<FormData>,
 ) -> StatusCode {
     let request_id = Uuid::new_v4();
-    log::info!(
-        "Request_ID: {}; Adding Name: '{}'; Email: '{}' as a new subscriber.",
-        request_id,
-        subscription_form.name,
-        subscription_form.email
+    let request_span = tracing::info_span!(
+        "Adding a new subscriber",
+        %request_id,
+        subscriber_name = %subscription_form.name,
+        subscriber_email = %subscription_form.email
     );
+    // _request_span_guard is dropped naturally at the end of this function
+    let _request_span_guard = request_span.enter();
     match sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -37,8 +39,8 @@ pub async fn subscribe(
     .await
     {
         Ok(_) => {
-            log::info!(
-                "Successfully added Request_ID: {}; Name: '{}'; Email: '{}' as a subscriber.",
+            tracing::info!(
+                "Successfully added request_id: {}; name: '{}'; email: '{}' as a subscriber.",
                 request_id,
                 subscription_form.name,
                 subscription_form.email
@@ -46,8 +48,8 @@ pub async fn subscribe(
             StatusCode::OK
         }
         Err(err) => {
-            log::error!(
-                "Failed to execute query: Request_ID: {}; Name: '{}'; Email: '{}'; Error: {:?}",
+            tracing::error!(
+                "Failed to execute query; request_id: {}; name: '{}'; email: '{}'; error: {:?}",
                 request_id,
                 subscription_form.name,
                 subscription_form.email,

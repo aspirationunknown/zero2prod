@@ -20,6 +20,7 @@ log = "0.4.34"
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 tower-http = { version = "0.7.1", features = ["trace"] }
+tracing = { version = "0.1.44", features = ["log"] }
 uuid = { version = "1.26.0", features = ["v4"] }
 
 [dev-dependencies]
