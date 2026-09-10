@@ -4,6 +4,7 @@ use axum::{Form, extract::State, http::StatusCode};
 use chrono::Utc;
 use serde::Deserialize;
 use sqlx::PgPool;
+use tracing::Instrument;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -25,6 +26,7 @@ pub async fn subscribe(
     );
     // _request_span_guard is dropped naturally at the end of this function
     let _request_span_guard = request_span.enter();
+    let query_span = tracing::info_span!("Saving new subscriber details in the database");
     match sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -36,6 +38,10 @@ pub async fn subscribe(
         Utc::now()
     )
     .execute(&pool)
+    // This call to instrument handles the calling of enter() on the query_span.
+    // This is how spans are handled when we want them to be entered and exited automatically
+    // until the query is complete and the span is closed.
+    .instrument(query_span)
     .await
     {
         Ok(_) => {

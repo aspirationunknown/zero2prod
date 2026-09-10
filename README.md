@@ -1,4 +1,4 @@
-# My code written while working through Luca Palmieri's "Zero to Production in Rust"
+# ly code written while working through Luca Palmieri's "Zero to Production in Rust"
 
 ## Differences
 - The axum framework is used instead of actix-web
@@ -6,4 +6,4 @@
 - Newer versions of some dependencies are used
 
 ## Current Position in Book
-I am currently at section 4.5.4
+I am currently at section 4.5.7
