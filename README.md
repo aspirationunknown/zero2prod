@@ -6,4 +6,4 @@
 - Newer versions of some dependencies are used
 
 ## Current Position in Book
-I am currently at section 4.5.7
+I am currently at section 4.5.10
