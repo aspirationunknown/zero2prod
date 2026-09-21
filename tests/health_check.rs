@@ -1,5 +1,7 @@
 //! tests/health_check.rs
 
+use once_cell::sync::Lazy;
+use secrecy::ExposeSecret;
 use sqlx::{
     Postgres, QueryBuilder,
     postgres::{PgPool, PgPoolOptions},
@@ -9,7 +11,20 @@ use uuid::Uuid;
 use zero2prod::{
     configuration::{DatabaseSettings, get_configuration},
     startup::run,
+    telemetry::{get_subscriber, init_subscriber},
 };
+
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let default_filter_level = "info".to_string();
+    let subscriber_name = "test".to_string();
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+        init_subscriber(subscriber);
+    } else {
+        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::sink);
+        init_subscriber(subscriber);
+    };
+});
 
 #[derive(Debug)]
 pub struct TestApp {
@@ -18,6 +33,7 @@ pub struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
+    Lazy::force(&TRACING);
     let mut configuration = get_configuration().expect("Failed to read configuration file");
     configuration.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&configuration.database).await;
@@ -37,7 +53,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let connection = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(&config.connection_string_without_db())
+        .connect(config.connection_string_without_db().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
     let mut command: QueryBuilder<Postgres> = QueryBuilder::new(r#"CREATE DATABASE ""#);
@@ -51,7 +67,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let connection_pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(&config.connection_string())
+        .connect(config.connection_string().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
     sqlx::migrate!("./migrations")
