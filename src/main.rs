@@ -18,10 +18,12 @@ async fn main() -> std::io::Result<()> {
     let connection_pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(configuration.database.connection_string().expose_secret())
-        .await
+        .connect_lazy(configuration.database.connection_string().expose_secret())
         .expect("Cannot connect to database");
-    let address = format!("127.0.0.1:{}", configuration.application_port);
+    let address = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
     let listener = match std::net::TcpListener::bind(&address) {
         Ok(listener) => listener,
         Err(err) => {
