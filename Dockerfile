@@ -1,5 +1,5 @@
 # Using the latest stable release of Rust
-FROM rust:1.98.0
+FROM rust:1.98.0 AS builder
 
 # Switch to app working directory
 WORKDIR /app
@@ -15,6 +15,17 @@ ENV SQLX_OFFLINE=true
 
 # Build binary in release
 RUN cargo build --release
+
+FROM rust:1.98.0-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/zero2prod zero2prod
+
+COPY configuration configuration
+
+# Set production for configuration
+ENV APP_ENVIRONMENT="production"
 
 # When 'docker run' is executed, launch the application
 ENTRYPOINT [ "./target/release/zero2prod" ]
