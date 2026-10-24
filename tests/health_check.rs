@@ -1,7 +1,6 @@
 //! tests/health_check.rs
 
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
 use sqlx::{
     Postgres, QueryBuilder,
     postgres::{PgPool, PgPoolOptions},
@@ -53,7 +52,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let connection = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(config.connection_string_without_db().expose_secret())
+        .connect_with(config.without_db())
         .await
         .expect("Failed to connect to Postgres");
     let mut command: QueryBuilder<Postgres> = QueryBuilder::new(r#"CREATE DATABASE ""#);
@@ -67,7 +66,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let connection_pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(config.connection_string().expose_secret())
+        .connect_with(config.with_db())
         .await
         .expect("Failed to connect to Postgres");
     sqlx::migrate!("./migrations")
