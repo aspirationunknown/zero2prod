@@ -53,4 +53,4 @@ COPY configuration configuration
 ENV APP_ENVIRONMENT="production"
 
 # When 'docker run' is executed, launch the application
-ENTRYPOINT [ "./target/release/zero2prod" ]
+ENTRYPOINT [ "/app/zero2prod" ]
